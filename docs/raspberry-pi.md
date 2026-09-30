@@ -211,6 +211,39 @@ pierde un instante puede contarse como nueva. Con clips, comparar **fps y
 cobertura** entre equipos; el número de eventos solo es comparable con una
 cámara en vivo.
 
+### En vivo con la cámara de la laptop
+
+Para ver el flujo completo mientras la Pi no tiene cámara. La laptop captura y
+emite la imagen por la red; la Pi la lee con la fuente `red`. Las dos tienen que
+estar en la misma red (por ejemplo, las dos por Ethernet al mismo router).
+
+En la **laptop** (PowerShell, con el entorno activado):
+
+```powershell
+python transmitir_camara.py
+```
+
+Imprime una línea `URL para la Pi: http://<ip>:8080/video`. Abrir
+`http://localhost:8080/` en el navegador muestra lo mismo que recibe la Pi. La
+primera vez, el firewall de Windows pregunta: permitir en redes privadas.
+
+En la **Pi**, poner esa URL en `config.pi-red.json` y correr:
+
+```bash
+sed -i 's#IP_DE_LA_LAPTOP#192.168.1.50#' config.pi-red.json   # la IP que imprimió la laptop
+python -m vision_qr.main --config config.pi-red.json --reporte reportes/pi_red.json --etiqueta "Pi 3, camara de la laptop"
+```
+
+Sin clip ni cámara, en la laptop: `python transmitir_camara.py --video clips/vuelta_2.mp4`
+repite un clip en bucle como si fuera la cámara. Se corta con Ctrl+C.
+
+Limitaciones: es una demostración, no una medición. Los fps incluyen la
+compresión JPEG y la red, y dependen de ellas; la cámara USB definitiva se
+mide con `probar_camara.py` en la Pi. Si la laptop se apaga, la Pi reintenta
+cada 2 segundos y sigue sola cuando vuelve. Si la red separa los equipos (pasa
+en redes institucionales), la Pi no llega a la laptop: usar el cable directo o
+el hotspot del celular.
+
 ### Clips de la GoPro
 
 Grabar con la GoPro lo más angosto que permita su campo de visión (el gran

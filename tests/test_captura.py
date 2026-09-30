@@ -60,3 +60,68 @@ def test_la_fabrica_pasa_el_codec_de_la_camara():
 def test_fuente_desconocida():
     with pytest.raises(ValueError):
         construir_fuente({"tipo": "telepatia"})
+
+
+# --- FuenteRed: lee el flujo MJPEG de transmitir_camara.py --------------------
+
+def _servidor_mjpeg(cuadros):
+    """Emite los cuadros dados en multipart, como transmitir_camara.py."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    jpgs = [cv2.imencode(".jpg", c)[1].tobytes() for c in cuadros]
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=cuadro")
+            self.end_headers()
+            try:
+                for _ in range(200):  # repite: la fuente se queda con el ultimo
+                    for j in jpgs:
+                        self.wfile.write(b"--cuadro\r\nContent-Type: image/jpeg\r\n"
+                                         + f"Content-Length: {len(j)}\r\n\r\n".encode() + j + b"\r\n")
+                        self.wfile.flush()
+                    import time
+                    time.sleep(0.02)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def test_fuente_red_recibe_cuadros_del_flujo():
+    from vision_qr.captura import FuenteRed
+    cuadro = np.full((120, 160, 3), 200, np.uint8)
+    srv = _servidor_mjpeg([cuadro])
+    try:
+        with FuenteRed(f"http://127.0.0.1:{srv.server_port}/video") as f:
+            recibido = next(f.cuadros())
+        assert recibido.shape == (120, 160, 3)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_fuente_red_se_construye_desde_la_configuracion():
+    from vision_qr.captura import FuenteRed
+    f = construir_fuente({"tipo": "red", "url": "http://10.0.0.5:8080/video"})
+    assert isinstance(f, FuenteRed) and f.url.endswith("/video")
+
+
+def test_fuente_red_sin_servidor_no_mata_el_proceso():
+    """RF-07: si la laptop no esta, reintenta en silencio y guarda el motivo."""
+    import time
+    from vision_qr.captura import FuenteRed
+    f = FuenteRed("http://127.0.0.1:9/video", reintento=0.1, timeout=0.5)
+    gen = f.cuadros()
+    import threading
+    threading.Thread(target=lambda: next(gen, None), daemon=True).start()
+    time.sleep(1.0)
+    f.cerrar()
+    assert f.error is not None

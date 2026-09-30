@@ -94,12 +94,13 @@ motores decide si puede cumplirlo. Una parada inactiva se lee y se reporta igual
 | `estado_local` | `null` | Archivo JSON con la última parada, para el código de navegación |
 | `secuencia_recorrido` | las seis | Orden esperado. Se filtra por `paradas_activas` |
 | `recorrido_circular` | `true` | Si tras la última se espera volver a la primera |
-| `captura.tipo` | `webcam` | `webcam`, `video`, `archivos` o `picamera` |
+| `captura.tipo` | `webcam` | `webcam`, `video`, `archivos`, `red` o `picamera` |
 | `publicacion.tipo` | `consola` | `consola` o `http` |
 | `publicacion.buffer` | — | Archivo donde se guardan los eventos si se corta la red |
 
 `config.example.json` es para la laptop y `config.pi.json` para la Raspberry
-Pi. `config.pi-clip.json` es para medir la Pi sin cámara, con un clip grabado.
+Pi. `config.pi-clip.json` es para medir la Pi sin cámara, con un clip grabado;
+`config.pi-red.json`, para leer la cámara de la laptop por la red.
 `config.json` es de cada máquina y no se versiona.
 
 ## Herramientas
@@ -109,6 +110,7 @@ Pi. `config.pi-clip.json` es para medir la Pi sin cámara, con un clip grabado.
 | `probar_camara.py` | Primera prueba. Muestra cualquier QR, sin filtrar |
 | `buscar_camaras.py` | Lista las cámaras y sus índices; `--guardar` deja una foto de cada una |
 | `generar_etiquetas.py` | Genera las etiquetas y mantiene el mapa de correspondencias |
+| `transmitir_camara.py` | Emite la cámara de la laptop por la red, para probar la Pi en vivo |
 | `grabar_clip.py` | Graba un clip para reproducirlo después como si fuera la cámara |
 | `benchmark.py` | Mide cuánto le cuesta al equipo leer un QR. No necesita cámara |
 | `ensayo_robustez.py` | Compara ZBar contra OpenCV en catorce condiciones degradadas |

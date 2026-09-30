@@ -8,6 +8,7 @@ instancia, elegida por configuracion. Ningun otro archivo se toca.
 from __future__ import annotations
 import glob
 import sys
+import threading
 import time
 from typing import Iterator, Optional
 
@@ -241,6 +242,90 @@ class FuenteVideo(FuenteImagen):
             self.cap = None
 
 
+class FuenteRed(FuenteImagen):
+    """Lee el video MJPEG que emite transmitir_camara.py desde otra maquina.
+
+    Sirve para probar la Raspberry Pi en vivo con la camara de la laptop. No
+    usa el FFmpeg de OpenCV: corta el flujo HTTP buscando los marcadores de
+    JPEG, asi que no depende de como se compilo OpenCV en cada plataforma.
+
+    Un hilo lee siempre; cuadros() entrega el MAS RECIENTE y descarta los
+    que no llego a procesar. Si la Pi va mas lenta que la camara, atrasar la
+    imagen no sirve de nada: lo mismo que hace FuenteWebcam con su buffer de 1.
+
+    Si se corta la conexion reintenta solo (RF-07): apagar la laptop un rato
+    no debe matar el proceso de la Pi.
+    """
+
+    def __init__(self, url: str, reintento: float = 2.0, timeout: float = 5.0):
+        self.url = url
+        self.reintento = reintento
+        self.timeout = timeout
+        self._ultimo: Optional[np.ndarray] = None
+        self._numero = 0
+        self._cond = threading.Condition()
+        self._parar = threading.Event()
+        self._hilo: Optional[threading.Thread] = None
+        self.error: Optional[str] = None
+
+    def _leer_flujo(self) -> None:
+        import requests
+        with requests.get(self.url, stream=True, timeout=self.timeout) as r:
+            r.raise_for_status()
+            self.error = None
+            resto = b""
+            for trozo in r.iter_content(chunk_size=4096):
+                if self._parar.is_set():
+                    return
+                resto += trozo
+                while True:
+                    ini = resto.find(b"\xff\xd8")
+                    if ini < 0:
+                        resto = resto[-1:]
+                        break
+                    fin = resto.find(b"\xff\xd9", ini + 2)
+                    if fin < 0:
+                        resto = resto[ini:]
+                        break
+                    jpg, resto = resto[ini:fin + 2], resto[fin + 2:]
+                    cuadro = cv2.imdecode(np.frombuffer(jpg, np.uint8), cv2.IMREAD_COLOR)
+                    if cuadro is None:
+                        continue
+                    with self._cond:
+                        self._ultimo = cuadro
+                        self._numero += 1
+                        self._cond.notify_all()
+
+    def _bucle(self) -> None:
+        while not self._parar.is_set():
+            try:
+                self._leer_flujo()
+            except Exception as e:  # red caida, servidor apagado, timeout
+                self.error = f"{type(e).__name__}: {e}"
+            if not self._parar.wait(self.reintento):
+                continue
+
+    def cuadros(self) -> Iterator[np.ndarray]:
+        self._parar.clear()
+        self._hilo = threading.Thread(target=self._bucle, daemon=True)
+        self._hilo.start()
+        visto = 0
+        while True:
+            with self._cond:
+                if not self._cond.wait_for(lambda: self._numero != visto, timeout=1.0):
+                    continue
+                visto = self._numero
+                cuadro = self._ultimo
+            yield cuadro
+
+    def cerrar(self) -> None:
+        self._parar.set()
+        # Esperar al hilo: cortar el proceso con el decodificador a medio
+        # cuadro hace que el interprete aborte con un mensaje feo al salir.
+        if self._hilo is not None and self._hilo.is_alive():
+            self._hilo.join(timeout=2.0)
+
+
 class FuentePicamera(FuenteImagen):
     """Camara CSI de la Raspberry Pi mediante picamera2.
 
@@ -306,6 +391,8 @@ def construir_fuente(cfg: dict) -> FuenteImagen:
             ancho=cfg.get("ancho"),
             alto=cfg.get("alto"),
         )
+    if tipo == "red":
+        return FuenteRed(url=cfg["url"], reintento=cfg.get("reintento", 2.0))
     if tipo == "picamera":
         return FuentePicamera(ancho=cfg.get("ancho", 640), alto=cfg.get("alto", 480))
     raise ValueError(f"Fuente desconocida: {tipo!r}")

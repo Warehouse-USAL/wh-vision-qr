@@ -1,0 +1,18 @@
+{
+  "id_rover": "rover-pi-red",
+  "mostrar_ventana": false,
+  "cuadros_para_confirmar": 3,
+  "usar_respaldo_opencv": false,
+  "estado_local": "datos/estado.json",
+  "publicacion": {
+    "tipo": "consola",
+    "buffer": "datos/pendientes.jsonl"
+  },
+  "captura": {
+    "tipo": "red",
+    "url": "http://IP_DE_LA_LAPTOP:8080/video"
+  },
+  "_notas": {
+    "url": "Reemplazar IP_DE_LA_LAPTOP por la que imprime transmitir_camara.py. Ver docs/raspberry-pi.md."
+  }
+}
