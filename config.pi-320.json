@@ -1,0 +1,39 @@
+{
+  "id_rover": "rover-01",
+  "mostrar_ventana": false,
+  "cuadros_para_confirmar": 3,
+  "segundos_para_reemitir": 5.0,
+  "usar_respaldo_opencv": false,
+  "paradas_activas": null,
+  "minimo_paradas": 0,
+  "estado_local": "datos/estado.json",
+  "secuencia_recorrido": [
+    "PA1",
+    "PA2",
+    "PA3",
+    "PM1",
+    "PM2",
+    "PM3"
+  ],
+  "recorrido_circular": true,
+  "captura": {
+    "tipo": "webcam",
+    "indice": 0,
+    "ancho": 320,
+    "alto": 240,
+    "fps": 30,
+    "backend": "v4l2",
+    "fourcc": "MJPG"
+  },
+  "publicacion": {
+    "tipo": "consola",
+    "buffer": "datos/pendientes.jsonl"
+  },
+  "_notas": {
+    "usar_respaldo_opencv": "Apagado a proposito en la Pi 3: el respaldo corre en CADA cuadro donde ZBar no encuentra nada (casi todos), y cuesta tanto como ZBar. En las pruebas de degradacion nunca rescato un caso que ZBar fallara. Medilo con benchmark.py antes de volver a prenderlo.",
+    "captura.fourcc": "MJPG comprime en la camara y libera ancho de banda del USB 2.0, que la Pi 3 comparte con la red. Si la camara no lo soporta, quitar la clave o probar YUYV.",
+    "camara_CSI": "Con el modulo de camara oficial: \"captura\": { \"tipo\": \"picamera\", \"ancho\": 640, \"alto\": 480 }",
+    "sin_pantalla": "mostrar_ventana false porque Pi OS Lite no tiene escritorio. Para ver que enfoca la camara: python buscar_camaras.py --guardar y copiar el PNG a la laptop.",
+    "captura.resolucion": "320x240 (no 640x480): medido con la camara USB real, ZBar tarda 88 ms por cuadro a 640x480 (9,4 fps, no llega a los 10 de RNF-01) y ~4 veces menos a 320x240 (29,5 fps, el maximo de la camara). Verificar la distancia de lectura cuando se defina el montaje en el Rover. Ver docs/raspberry-pi.md."
+  }
+}

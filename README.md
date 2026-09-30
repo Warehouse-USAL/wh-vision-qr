@@ -100,7 +100,8 @@ motores decide si puede cumplirlo. Una parada inactiva se lee y se reporta igual
 
 `config.example.json` es para la laptop y `config.pi.json` para la Raspberry
 Pi. `config.pi-clip.json` es para medir la Pi sin cámara, con un clip grabado;
-`config.pi-red.json`, para leer la cámara de la laptop por la red.
+`config.pi-red.json`, para leer la cámara de la laptop por la red;
+`config.pi-320.json` y `config.pi-320-vista.json`, la Pi a 320x240 (ver docs/raspberry-pi.md).
 `config.json` es de cada máquina y no se versiona.
 
 ## Herramientas
@@ -112,6 +113,7 @@ Pi. `config.pi-clip.json` es para medir la Pi sin cámara, con un clip grabado;
 | `generar_etiquetas.py` | Genera las etiquetas y mantiene el mapa de correspondencias |
 | `transmitir_camara.py` | Emite la cámara de la laptop por la red, para probar la Pi en vivo |
 | `grabar_clip.py` | Graba un clip para reproducirlo después como si fuera la cámara |
+| `medir_tiempos.py` | Con la cámara en vivo: cuánto cuesta leer, pasar a gris y decodificar cada cuadro |
 | `benchmark.py` | Mide cuánto le cuesta al equipo leer un QR. No necesita cámara |
 | `ensayo_robustez.py` | Compara ZBar contra OpenCV en catorce condiciones degradadas |
 | `servidor_prueba.py` | Backend simulado, para probar sin depender de otro grupo |

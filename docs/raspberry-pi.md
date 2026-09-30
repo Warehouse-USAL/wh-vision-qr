@@ -117,7 +117,7 @@ Cómo leerlo:
   respaldo corre siempre que ZBar no encuentra nada, o sea, en casi todos los
   cuadros, y cuesta tanto como ZBar. Por eso `config.pi.json` lo trae apagado.
 - El techo real es **menor**: el benchmark no incluye la captura de la cámara,
-  el bus USB ni el resto del programa. Se mide entero en el paso 7.
+  el bus USB ni el resto del programa. Se mide entero con `medir_tiempos.py` (abajo) y con el programa completo (sección 8).
 
 Con una foto real de la cámara como fondo, la medición es más representativa:
 
@@ -125,6 +125,12 @@ Con una foto real de la cámara como fondo, la medición es más representativa:
 python buscar_camaras.py --guardar        # deja camara_0.png
 python benchmark.py --cuadro camara_0.png
 ```
+
+Ojo: esa foto es el primer cuadro al abrir la cámara, que suele salir oscuro y
+liso, y subestima el costo real. En una prueba con la cámara en vivo ZBar tardó
+**88 ms** por cuadro, el doble de los 44 ms que dio sobre la foto guardada.
+Para medir con cuadros reales usar `medir_tiempos.py` (ver "Resultados con la
+cámara USB real", en la sección 6).
 
 Si no se llega al objetivo, en este orden: bajar la resolución (640×480 →
 320×240), mantener el respaldo apagado, y recién después pensar en otra cosa.
@@ -166,6 +172,37 @@ python transmitir_camara.py --backend v4l2 --fourcc MJPG
 y abrir `http://rover-01.local:8080/` (o `http://<ip de la Pi>:8080/`) en la
 laptop. Se corta con Ctrl+C. Consume CPU de la Pi: es para acomodar la cámara,
 no para medir.
+
+### Resultados con la cámara USB real (30/09/2026)
+
+Pi 3 B Rev 1.2, cámara USB en MJPG, respaldo de OpenCV apagado, etiquetas
+impresas reales. La cámara sola entrega 30 fps a 640×480 (`v4l2-ctl`) y OpenCV
+la lee a 30,2 fps, así que el límite no es la cámara.
+
+| Resolución | Tiempo por cuadro | fps del programa completo | ¿Cumple RNF-01 (10 fps)? |
+| --- | --- | --- | --- |
+| 640×480 | lectura 15,5 ms + gris 1,1 ms + ZBar 87,9 ms | 9,4 | No, por poco |
+| 320×240 | (cámara al máximo) | 29,5 sin vista; 29,8 con vista web | Sí, con mucho margen |
+
+- A 320×240 las seis paradas se leyeron en orden, dos vueltas seguidas, y el
+  módulo completo dio cobertura 6/6. La distancia de lectura se consideró
+  buena en la prueba, pero **no se midió en centímetros**: falta hacerlo con el
+  montaje real del Rover, y puede volver a hablar a favor de subir la resolución.
+- Los 23 fps del benchmark y los 18 a 20 fps de los clips se midieron con
+  escenas fáciles para ZBar. Con la escena real a 640×480 no se repiten.
+- La vista web con el navegador abierto no costó fps medibles a 320×240.
+- Configuración de la Pi a 320×240: `config.pi-320.json`. Con vista web:
+  `config.pi-320-vista.json`. `config.pi.json` sigue a 640×480 hasta decidir.
+
+Para repetir el desglose con la cámara en vivo, por ejemplo con otra resolución
+u otra cámara:
+
+```bash
+python medir_tiempos.py --ancho 320 --alto 240
+```
+
+Imprime lectura de cámara, conversión a gris y ZBar, y el techo de fps que
+resulta. La cámara tiene que estar libre.
 
 ### Módulo de cámara (CSI)
 
