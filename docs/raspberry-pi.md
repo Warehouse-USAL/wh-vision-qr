@@ -155,6 +155,18 @@ python probar_camara.py --sin-ventana --fourcc MJPG
 Imprime `Camara negocio: 640x480 a 30 fps, codec MJPG` y, al salir con Ctrl+C,
 los fps reales de todo el ciclo.
 
+Para **ver en vivo** lo que enfoca la cámara desde el navegador de la laptop
+(foco, encuadre, luz), correr el emisor en la Pi, sin tener el módulo corriendo
+al mismo tiempo porque la cámara no se comparte:
+
+```bash
+python transmitir_camara.py --backend v4l2 --fourcc MJPG
+```
+
+y abrir `http://rover-01.local:8080/` (o `http://<ip de la Pi>:8080/`) en la
+laptop. Se corta con Ctrl+C. Consume CPU de la Pi: es para acomodar la cámara,
+no para medir.
+
 ### Módulo de cámara (CSI)
 
 ```bash

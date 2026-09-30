@@ -15,6 +15,11 @@ Uso, en la LAPTOP:
 Despues, en la Pi:
     python -m vision_qr.main --config config.pi-red.json
 
+Tambien sirve al reves: para VER lo que enfoca la camara USB de la Pi, correrlo
+EN LA PI y abrir http://rover-01.local:8080/ en el navegador de la laptop:
+    python transmitir_camara.py --backend v4l2 --fourcc MJPG
+Mientras tanto la camara esta ocupada: no correr a la vez el modulo principal.
+
 Si el navegador de la laptop abre http://localhost:8080/ se ve lo mismo que
 recibe la Pi. En Windows, la primera vez el firewall pregunta: permitir en
 "redes privadas".
@@ -51,6 +56,8 @@ class Emisor:
         else:
             backend = _BACKENDS[a.backend.lower()] if a.backend else backend_por_defecto()
             cap = cv2.VideoCapture(a.indice, backend)
+            if a.fourcc:  # el codec se pide ANTES que la resolucion (ver captura.py)
+                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*a.fourcc))
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, a.ancho)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, a.alto)
             cap.set(cv2.CAP_PROP_FPS, a.fps)
@@ -146,6 +153,7 @@ def main() -> int:
     ap.add_argument("--alto", type=int, default=480)
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--backend", default=None, help=f"Opciones: {list(_BACKENDS)}")
+    ap.add_argument("--fourcc", default=None, metavar="COD", help="Codec de la camara, por ejemplo MJPG")
     ap.add_argument("--calidad", type=int, default=80, help="Calidad JPEG 1-100")
     ap.add_argument("--puerto", type=int, default=8080)
     ap.add_argument("--video", default=None, help="Emitir un clip en bucle en vez de la camara")
