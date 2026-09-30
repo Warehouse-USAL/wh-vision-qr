@@ -1,0 +1,7 @@
+parada,tipo,orden,contenido,archivo,lado_mm,instalada,verificada
+PA1,automatica,1,WH2|PA1,PA1.png,100.0,NO,NO
+PA2,automatica,2,WH2|PA2,PA2.png,100.0,NO,NO
+PA3,automatica,3,WH2|PA3,PA3.png,100.0,NO,NO
+PM1,manual,4,WH2|PM1,PM1.png,100.0,NO,NO
+PM2,manual,5,WH2|PM2,PM2.png,100.0,NO,NO
+PM3,manual,6,WH2|PM3,PM3.png,100.0,NO,NO

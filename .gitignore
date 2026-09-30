@@ -1,0 +1,27 @@
+# Entornos virtuales
+.env/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Configuracion local de cada maquina (los ejemplos config.*.json SI se versionan)
+config.json
+
+# Salidas de ejecucion: se regeneran o son de cada prueba
+datos/
+reportes/
+clips/
+camara_*.png
+
+# Etiquetas generadas. Los PNG se regeneran con generar_etiquetas.py, pero el
+# mapa de correspondencias (etiquetas/mapa_etiquetas.csv) NO: se llena a mano al
+# pegar y verificar cada etiqueta, asi que es lo unico que se versiona.
+etiquetas/*.png
+
+# Sistema
+.DS_Store
+Thumbs.db

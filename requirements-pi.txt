@@ -1,0 +1,15 @@
+# Dependencias para la Raspberry Pi con Raspberry Pi OS Lite (64-bit).
+#
+# Igual que requirements.txt salvo por opencv-python-headless: la variante sin
+# interfaz grafica, que es bastante mas liviana y es la que corresponde en una
+# Lite, donde no hay pantalla.
+#
+# Ademas hace falta, por apt: sudo apt install -y libzbar0
+#
+# Con un modulo de camara CSI se necesita tambien python3-picamera2 (apt) y
+# crear el entorno virtual con --system-site-packages. Ver docs/raspberry-pi.md.
+
+opencv-python-headless>=4.10,<5
+pyzbar>=0.1.9,<0.2
+qrcode[pil]>=8,<9
+requests>=2.31,<3

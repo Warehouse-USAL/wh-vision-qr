@@ -1,0 +1,13 @@
+{
+  "id_rover": "rover-pi-clip",
+  "mostrar_ventana": false,
+  "cuadros_para_confirmar": 3,
+  "usar_respaldo_opencv": false,
+  "estado_local": "datos/estado.json",
+  "publicacion": { "tipo": "consola", "buffer": "datos/pendientes.jsonl" },
+  "captura": { "tipo": "video", "ruta": "clips/vuelta_640.mp4", "velocidad": 0 },
+  "_notas": {
+    "para_que": "Mide el programa completo en la Pi sin camara: reproduce un clip grabado (python grabar_clip.py) lo mas rapido posible. Los fps del resumen son el techo real de la placa.",
+    "comparar": "Con clips, comparar fps y cobertura. El numero de eventos depende del reloj real y solo es comparable con camara en vivo."
+  }
+}

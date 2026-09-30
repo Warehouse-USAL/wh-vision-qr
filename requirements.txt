@@ -1,0 +1,15 @@
+# Dependencias del modulo de vision QR - Warehouse USAL
+#
+# Se usan rangos en lugar de versiones exactas a proposito: el equipo
+# trabaja sobre Windows, WSL2 y Raspberry Pi (ARM), y una version exacta
+# de opencv que existe para una plataforma puede no tener rueda
+# compilada para otra. El rango mayor queda fijado para que nadie
+# arrastre un cambio de API sin enterarse.
+#
+# En la Raspberry Pi sin escritorio conviene cambiar la primera linea
+# por: opencv-python-headless>=4.10,<5
+
+opencv-python>=4.10,<5
+pyzbar>=0.1.9,<0.2
+qrcode[pil]>=8,<9
+requests>=2.31,<3
