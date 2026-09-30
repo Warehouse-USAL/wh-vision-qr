@@ -152,6 +152,7 @@ vision_qr/
   recorrido.py      Orden esperado de paradas y detección de saltos
   mision.py         Política de paradas: activas y mínimo
   publicador.py     Transporte, buffer offline y estado local
+  vista_web.py      Video en vivo con los QR marcados, por navegador (--vista-web)
   main.py           Bucle principal
 tests/              pytest
 docs/               Guías y contrato del evento

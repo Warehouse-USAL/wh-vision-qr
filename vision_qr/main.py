@@ -22,6 +22,7 @@ from .payload import interpretar, PayloadInvalido, SECUENCIA
 from .confirmador import Confirmador
 from .recorrido import Recorrido
 from .mision import Mision, ConfiguracionInvalida
+from .vista_web import VistaWeb
 from .publicador import construir_publicador, construir_evento, escribir_estado_local
 
 
@@ -57,6 +58,9 @@ def main() -> int:
                     help="Ancho inicial de la ventana (no cambia la resolucion de captura)")
     ap.add_argument("--pantalla-completa", action="store_true",
                     help="Arrancar en pantalla completa")
+    ap.add_argument("--vista-web", type=int, nargs="?", const=8080, default=None, metavar="PUERTO",
+                    help="Publica el video con los QR marcados en http://<ip>:PUERTO/ "
+                         "(por defecto 8080). Para ver la camara de una Pi sin pantalla")
     args = ap.parse_args()
 
     cfg = cargar_config(args.config)
@@ -70,6 +74,17 @@ def main() -> int:
         segundos_reemision=cfg.get("segundos_para_reemitir", 5.0),
     )
     pub = construir_publicador(cfg["publicacion"])
+
+    cfg_vista = cfg.get("vista_web") or {}
+    puerto_vista = args.vista_web if args.vista_web is not None else cfg_vista.get("puerto")
+    vista = None
+    if puerto_vista:
+        try:
+            vista = VistaWeb(int(puerto_vista), fps_max=cfg_vista.get("fps_max", 8.0),
+                             calidad=cfg_vista.get("calidad", 70))
+        except OSError as e:
+            print(f"No se pudo abrir la vista web en el puerto {puerto_vista}: {e}", file=sys.stderr)
+            return 1
 
     try:
         mision = Mision(cfg.get("paradas_activas"), cfg.get("minimo_paradas", 0))
@@ -98,6 +113,8 @@ def main() -> int:
         print(f"Estado local: {estado_local}")
     if args.etiqueta:
         print(f"Sesion: {args.etiqueta}")
+    if vista is not None:
+        print(f"Vista en vivo: {vista.url()}")
     print("Ctrl+C para salir.\n")
 
     inicio_iso = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -187,12 +204,18 @@ def main() -> int:
                     fps = n_cuadros / (ahora - t0)
                     ultimo_fps = ahora
 
-                if mostrar:
+                quiere_vista = vista is not None and vista.quiere_cuadro()
+                if mostrar or quiere_vista:
                     sig = ruta.siguiente_esperada() or "-"
                     m = mision.estado(ruta.vuelta)
                     estado = (f"{fps:.1f} fps | mision {m['cumplidas']}/{m['requeridas']} | "
                               f"sigue: {sig} | ajenos {len(ajenos_vistos)}")
-                    cv2.imshow(VENTANA, anotar(cuadro, lecturas, estado))
+                    marcado = anotar(cuadro, lecturas, estado)
+                    if quiere_vista:
+                        vista.publicar(marcado)
+
+                if mostrar:
+                    cv2.imshow(VENTANA, marcado)
                     tecla = cv2.waitKey(1) & 0xFF
                     if tecla in (ord("q"), 27):
                         break
@@ -211,6 +234,8 @@ def main() -> int:
     finally:
         if mostrar:
             cv2.destroyAllWindows()
+        if vista is not None:
+            vista.cerrar()
         pub.cerrar()
 
     transcurrido = max(time.monotonic() - t0, 0.001)

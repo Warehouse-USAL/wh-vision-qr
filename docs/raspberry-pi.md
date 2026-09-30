@@ -285,18 +285,31 @@ irregular y movimiento hace falta bastante más, así que conviene apuntar a
 python -m vision_qr.main --config config.pi.json --reporte reportes/pi1.json --etiqueta "Pi 3, cámara USB, 640x480"
 ```
 
-Ya está sin ventana (`config.pi.json`). Para ver qué enfoca la cámara sin
-pantalla:
+Ya está sin ventana (`config.pi.json`). Para ver lo que enfoca la cámara sin
+pantalla, **mientras el módulo corre**, agregar `--vista-web`:
 
 ```bash
-python buscar_camaras.py --guardar
+python -m vision_qr.main --config config.pi.json --vista-web --reporte reportes/pi1.json --etiqueta "Pi 3, cámara USB, 640x480"
 ```
 
-y traer la foto a la laptop desde PowerShell:
+Al arrancar imprime `Vista en vivo: http://<ip>:8080/`. Abrir esa dirección (o
+`http://rover-01.local:8080/`) en el navegador de la laptop: se ve el mismo
+cuadro que procesa la Pi, con cada QR marcado en verde, su contenido y una
+línea de estado (fps, misión, próxima parada esperada). Las paradas siguen
+apareciendo en la consola de la Pi como siempre.
 
-```
-scp USUARIO@rover01.local:wh-vision-qr/camara_0.png .
-```
+- Es el módulo mismo el que entrega la imagen, así que no abre la cámara dos
+  veces: no hay que cortar nada para mirar.
+- Cuesta CPU solo mientras hay alguien mirando: sin navegador abierto no dibuja
+  ni comprime nada, y con uno abierto emite como mucho 8 cuadros por segundo.
+  Para **medir** fps, correr sin `--vista-web` o sin el navegador abierto.
+- Otro puerto: `--vista-web 9000`. También se puede dejar fijo en el config:
+  `"vista_web": {"puerto": 8080, "fps_max": 8, "calidad": 70}`.
+
+Alternativas: `python transmitir_camara.py --backend v4l2 --fourcc MJPG` emite la
+cámara sin correr el módulo (sirve solo para acomodarla), y
+`python buscar_camaras.py --guardar` deja una foto `camara_0.png` que se trae a
+la laptop con `scp rover@rover-01.local:vision-qr/camara_0.png .`.
 
 ### Lo que ve el resto del sistema
 
