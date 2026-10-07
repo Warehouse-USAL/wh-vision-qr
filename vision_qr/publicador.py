@@ -173,6 +173,20 @@ class PublicadorHTTP(Publicador):
             self._sesion = None
 
 
+class PublicadorMqtt(Publicador):
+    """Publica cada parada confirmada por MQTT, usando la conexion del nodo.
+
+    Sin conexion devuelve False y el buffer en disco se hace cargo, igual que
+    con HTTP. No abre una conexion propia: comparte la del NodoMqtt.
+    """
+
+    def __init__(self, nodo):
+        self.nodo = nodo
+
+    def enviar(self, evento: dict) -> bool:
+        return self.nodo.publicar_parada(evento)
+
+
 class PublicadorConBuffer(Publicador):
     """Envuelve a otro publicador y garantiza que ningun evento se pierda.
 
@@ -267,7 +281,7 @@ class PublicadorConBuffer(Publicador):
         self.interno.cerrar()
 
 
-def construir_publicador(cfg: dict) -> Publicador:
+def construir_publicador(cfg: dict, nodo=None) -> Publicador:
     tipo = cfg.get("tipo", "consola")
     if tipo == "consola":
         base: Publicador = PublicadorConsola()
@@ -277,6 +291,10 @@ def construir_publicador(cfg: dict) -> Publicador:
             timeout=cfg.get("timeout", 3.0),
             token=cfg.get("token"),
         )
+    elif tipo == "mqtt":
+        if nodo is None:
+            raise ValueError('El transporte "mqtt" necesita la seccion "mqtt" en el config')
+        base = PublicadorMqtt(nodo)
     else:
         raise ValueError(f"Transporte desconocido: {tipo!r}")
 

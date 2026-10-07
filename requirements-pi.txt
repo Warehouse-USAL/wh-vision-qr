@@ -13,3 +13,4 @@ opencv-python-headless>=4.10,<5
 pyzbar>=0.1.9,<0.2
 qrcode[pil]>=8,<9
 requests>=2.31,<3
+paho-mqtt>=2,<3

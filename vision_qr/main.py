@@ -22,6 +22,7 @@ from .payload import interpretar, PayloadInvalido, SECUENCIA
 from .confirmador import Confirmador
 from .recorrido import Recorrido
 from .mision import Mision, ConfiguracionInvalida
+from .nodo_mqtt import NodoMqtt
 from .vista_web import VistaWeb
 from .publicador import construir_publicador, construir_evento, escribir_estado_local
 
@@ -73,7 +74,9 @@ def main() -> int:
         cuadros_necesarios=cfg.get("cuadros_para_confirmar", 3),
         segundos_reemision=cfg.get("segundos_para_reemitir", 5.0),
     )
-    pub = construir_publicador(cfg["publicacion"])
+    cfg_mqtt = cfg.get("mqtt")
+    nodo = NodoMqtt.desde_config(cfg_mqtt, id_rover) if cfg_mqtt is not None else None
+    pub = construir_publicador(cfg["publicacion"], nodo=nodo)
 
     cfg_vista = cfg.get("vista_web") or {}
     puerto_vista = args.vista_web if args.vista_web is not None else cfg_vista.get("puerto")
@@ -113,6 +116,9 @@ def main() -> int:
         print(f"Estado local: {estado_local}")
     if args.etiqueta:
         print(f"Sesion: {args.etiqueta}")
+    if nodo is not None:
+        print(f"MQTT: {nodo.host}:{nodo.port}   vehiculo: {nodo.vehicle_id}   "
+              f"objetivo en {nodo.cuadros_objetivo} cuadro(s)")
     if vista is not None:
         print(f"Vista en vivo: {vista.url()}")
     print("Ctrl+C para salir.\n")
@@ -132,6 +138,9 @@ def main() -> int:
         if pantalla_completa:
             cv2.setWindowProperty(VENTANA, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         print("Teclas:  f = pantalla completa    + / - = agrandar o achicar    q = salir\n")
+
+    if nodo is not None:
+        nodo.iniciar()
 
     t0 = time.monotonic()
     n_cuadros = 0
@@ -172,6 +181,10 @@ def main() -> int:
                         continue
                     validas[parada.clave()] = (parada, l)
 
+                if nodo is not None:
+                    nodo.procesar_cuadro([l.contenido for l in lecturas],
+                                         [p.id for p, _ in validas.values()])
+
                 for clave in conf.procesar(list(validas.keys())):
                     parada, lect = validas[clave]
 
@@ -202,6 +215,8 @@ def main() -> int:
                 ahora = time.monotonic()
                 if ahora - ultimo_fps >= 1.0:
                     fps = n_cuadros / (ahora - t0)
+                    if nodo is not None:
+                        nodo.fps = fps
                     ultimo_fps = ahora
 
                 quiere_vista = vista is not None and vista.quiere_cuadro()
@@ -236,6 +251,8 @@ def main() -> int:
             cv2.destroyAllWindows()
         if vista is not None:
             vista.cerrar()
+        if nodo is not None:
+            nodo.cerrar()
         pub.cerrar()
 
     transcurrido = max(time.monotonic() - t0, 0.001)
@@ -259,6 +276,8 @@ def main() -> int:
     print(f"con advertencia    : {n_avisos}")
     print(f"codigos ajenos     : {len(ajenos_vistos)} distinto(s), {descartes} descarte(s)")
     print(f"por motor          : {decod.conteo_motor}")
+    if nodo is not None:
+        print(f"objetivos avisados : {nodo.detecciones} (MQTT {nodo.host}:{nodo.port})")
     if faltan:
         print(f"SIN LEER           : {', '.join(faltan)}")
 

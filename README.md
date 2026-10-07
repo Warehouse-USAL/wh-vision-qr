@@ -138,6 +138,12 @@ saltean en vez de fallar.
 Guía completa en [docs/raspberry-pi.md](docs/raspberry-pi.md): sistema
 operativo, instalación, cámara, medición de rendimiento y arranque automático.
 
+## Conexión con la central (MQTT)
+
+El módulo habla el protocolo pedido-respuesta de Comunicación (`set_target` →
+`qr_detected`) sobre MQTT. Ver [docs/mqtt.md](docs/mqtt.md); probarlo en la
+laptop con `broker_prueba.py` + `central_simulada.py` + `config.laptop-mqtt.json`.
+
 ## Contrato con los demás grupos
 
 [docs/contrato-de-evento.md](docs/contrato-de-evento.md): el evento que se
@@ -188,7 +194,7 @@ puede regenerar: se llena a mano al pegar cada etiqueta.
 
 ## Pendiente
 
-- Transporte MQTT detrás de la misma interfaz
+- Acordar con Comunicación el topic `stop_event`, el nombre del QR y las credenciales (docs/mqtt.md)
 - Latido de estado con métricas hacia el Dashboard
 - Estimación de pose y calibración de cámara
 - Validar en hardware el arranque automático como servicio
