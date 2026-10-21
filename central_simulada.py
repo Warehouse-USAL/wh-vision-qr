@@ -10,6 +10,10 @@ Uso:
     python central_simulada.py --qr Z1-L3-P07 --espera 60
     python central_simulada.py --solo-escuchar            # no pide nada: mira todo lo que publica el nodo
 
+    # Si hay OTRA central en el broker (la real, o otra simulada para otro
+    # vehiculo): --sin-estado, para no pisar su "central/status"
+    python central_simulada.py --vehiculo VHC-006 --qr PM2 --sin-estado
+
 Mostrarle a la camara cada QR pedido; el tiempo que imprime es desde el pedido
 hasta el aviso, asi que incluye lo que tardes en mostrarlo.
 """
@@ -32,6 +36,9 @@ def main() -> int:
     ap.add_argument("--clave", default=os.environ.get("MQTT_PASS"))
     ap.add_argument("--espera", type=float, default=30.0, help="Segundos maximos por cada QR")
     ap.add_argument("--solo-escuchar", action="store_true")
+    ap.add_argument("--sin-estado", action="store_true",
+                    help="No publicar central/status. Usar cuando hay otra central en el broker: "
+                         "al terminar esta publicaria 'offline' y los nodos descartarian su objetivo")
     args = ap.parse_args()
     if not args.qr and not args.solo_escuchar:
         sys.exit("Indicar --qr ... o --solo-escuchar")
@@ -47,7 +54,8 @@ def main() -> int:
 
     def al_conectar(c, u, f, rc, *a):
         c.subscribe(f"{base}/#", 1)
-        c.publish("central/status", json.dumps({"online": True}), qos=1)
+        if not args.sin_estado:
+            c.publish("central/status", json.dumps({"online": True}), qos=1)
 
     def al_recibir(c, u, m):
         try:
@@ -62,14 +70,18 @@ def main() -> int:
             ultimo.update(datos)
             detectado.set()
 
+    # Un client id por vehiculo: con el mismo id, dos centrales simuladas se
+    # echarian una a la otra del broker.
+    cid = f"central_simulada_{args.vehiculo}"
     try:
-        c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="central_simulada")
+        c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=cid)
     except AttributeError:
-        c = mqtt.Client(client_id="central_simulada")
+        c = mqtt.Client(client_id=cid)
     if args.usuario:
         c.username_pw_set(args.usuario, args.clave)
     c.on_connect, c.on_message = al_conectar, al_recibir
-    c.will_set("central/status", json.dumps({"online": False}), qos=1)
+    if not args.sin_estado:
+        c.will_set("central/status", json.dumps({"online": False}), qos=1)
     try:
         c.connect(args.host, args.puerto, keepalive=10)
     except OSError as e:
@@ -101,7 +113,8 @@ def main() -> int:
     except KeyboardInterrupt:
         return 0
     finally:
-        c.publish("central/status", json.dumps({"online": False}), qos=1).wait_for_publish(1)
+        if not args.sin_estado:
+            c.publish("central/status", json.dumps({"online": False}), qos=1).wait_for_publish(1)
         c.loop_stop()
 
 

@@ -208,13 +208,15 @@ Por eso `probar_camara.py` no filtra nada y muestra todo lo que ve.
 
 ## 5. El recorrido y las etiquetas
 
-El circuito tiene **seis paradas fijas** en forma de U:
+El circuito tiene **siete paradas fijas** más un **home por vehículo** (dos rieles):
 
 ```
-PA1 → PA2 → PA3 → PM1 → PM2 → PM3 → (vuelve a PA1)
+PA1 → PA2 → PA3 → PM1 → PM2 → PM3 → D1 → (home) → (vuelve a PA1)
 
 PA1, PA2, PA3   automáticas — el Rover se detiene solo al leerlas
 PM1, PM2, PM3   manuales    — requieren intervención de un operador
+D1              descarga    — se confirma por QR; la acción recomendada es detener
+P1, P2          home        — uno por vehículo (`parada_home` en el config); sin orden en la secuencia común
 ```
 
 Cada parada tiene un QR pegado que dice qué parada es. Nada más:
@@ -228,8 +230,8 @@ WH2|PA1
 Generalas con:
 
 ```
-python generar_etiquetas.py                  # las seis, 10 cm
-python generar_etiquetas.py --hoja-prueba    # una A4 con las seis, para probar sin imprimir
+python generar_etiquetas.py                  # las nueve (PA, PM, D1, P1, P2), 10 cm
+python generar_etiquetas.py --hoja-prueba    # una A4 con las nueve, para probar sin imprimir
 python generar_etiquetas.py --paradas PM2    # reimprimir una sola
 ```
 

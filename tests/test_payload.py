@@ -8,16 +8,19 @@ etiquetas del circuito quedan invalidas.
 import pytest
 
 from vision_qr.payload import (
-    PARADAS, SECUENCIA, PayloadInvalido, VERSION_SOPORTADA, construir, interpretar,
+    CATALOGO, HOMES, PARADAS, SECUENCIA, PayloadInvalido, VERSION_SOPORTADA,
+    construir, interpretar,
 )
 
 
-def test_las_seis_paradas_estan_en_el_catalogo():
-    assert SECUENCIA == ["PA1", "PA2", "PA3", "PM1", "PM2", "PM3"]
-    assert set(PARADAS) == set(SECUENCIA)
+def test_el_catalogo_tiene_el_circuito_y_los_home():
+    assert SECUENCIA == ["PA1", "PA2", "PA3", "PM1", "PM2", "PM3", "D1"]
+    assert HOMES == ["P1", "P2"]
+    assert CATALOGO == SECUENCIA + HOMES
+    assert set(PARADAS) == set(CATALOGO)
 
 
-@pytest.mark.parametrize("parada", SECUENCIA)
+@pytest.mark.parametrize("parada", CATALOGO)
 def test_ida_y_vuelta(parada):
     """Lo que el generador imprime es exactamente lo que el lector entiende."""
     assert interpretar(construir(parada)).id == parada
@@ -32,6 +35,15 @@ def test_tipo_y_orden():
     a, m = interpretar("WH2|PA3"), interpretar("WH2|PM1")
     assert (a.tipo, a.orden, a.es_automatica) == ("automatica", 3, True)
     assert (m.tipo, m.orden, m.es_manual) == ("manual", 4, True)
+
+
+def test_descarga_y_home():
+    d, p1, p2 = interpretar("WH2|D1"), interpretar("WH2|P1"), interpretar("WH2|P2")
+    assert (d.tipo, d.orden, d.es_descarga) == ("descarga", 7, True)
+    # los home no estan en la secuencia comun: uno por vehiculo
+    assert (p1.tipo, p1.orden, p1.es_home) == ("home", None, True)
+    assert (p2.tipo, p2.orden) == ("home", None)
+    assert "home" in str(p1) and "de 7" not in str(p1)
 
 
 def test_tolera_minusculas_y_espacios():

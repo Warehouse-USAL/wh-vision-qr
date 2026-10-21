@@ -6,6 +6,7 @@
   "usar_respaldo_opencv": false,
   "paradas_activas": null,
   "minimo_paradas": 0,
+  "parada_home": null,
   "estado_local": "datos/estado.json",
   "secuencia_recorrido": [
     "PA1",
@@ -13,7 +14,8 @@
     "PA3",
     "PM1",
     "PM2",
-    "PM3"
+    "PM3",
+    "D1"
   ],
   "recorrido_circular": true,
   "captura": {
@@ -33,6 +35,7 @@
     "usar_respaldo_opencv": "Apagado a proposito en la Pi 3: el respaldo corre en CADA cuadro donde ZBar no encuentra nada (casi todos), y cuesta tanto como ZBar. En las pruebas de degradacion nunca rescato un caso que ZBar fallara. Medilo con benchmark.py antes de volver a prenderlo.",
     "captura.fourcc": "MJPG comprime en la camara y libera ancho de banda del USB 2.0, que la Pi 3 comparte con la red. Si la camara no lo soporta, quitar la clave o probar YUYV.",
     "camara_CSI": "Con el modulo de camara oficial: \"captura\": { \"tipo\": \"picamera\", \"ancho\": 640, \"alto\": 480 }",
-    "sin_pantalla": "mostrar_ventana false porque Pi OS Lite no tiene escritorio. Para ver que enfoca la camara: python buscar_camaras.py --guardar y copiar el PNG a la laptop."
+    "sin_pantalla": "mostrar_ventana false porque Pi OS Lite no tiene escritorio. Para ver que enfoca la camara: python buscar_camaras.py --guardar y copiar el PNG a la laptop.",
+    "parada_home": "P1 o P2: el home de ESTE vehiculo (el circuito tiene dos rieles y cada Rover vuelve al suyo). Se suma a las paradas activas y cierra el recorrido. null = no se espera home."
   }
 }

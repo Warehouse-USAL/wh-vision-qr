@@ -6,10 +6,15 @@ Esquema v2 (recorrido con paradas):
      |   `-- identificador de parada
      `------ prefijo + version de esquema
 
-El recorrido educativo tiene seis paradas fijas:
+El recorrido tiene paradas fijas (layout de la maqueta, lamina 1):
 
     PA1, PA2, PA3   automaticas: el Rover se detiene solo al leerlas
     PM1, PM2, PM3   manuales: requieren intervencion de un operador
+    D1              descarga: ultima parada del circuito, se confirma por QR
+    P1, P2          home: donde arranca y termina cada vehiculo. Cada Rover
+                    tiene UN home (el config dice cual); no forman parte de
+                    la secuencia comun, porque el circuito tiene dos rieles
+                    y cada vehiculo vuelve al suyo.
 
 Por que el payload es tan corto: el QR identifica una parada, no la
 describe. Que hay en esa parada, en que orden va y que debe hacer el Rover
@@ -26,6 +31,7 @@ comercial que quedo dando vueltas por el circuito.
 """
 
 from dataclasses import dataclass, asdict
+from typing import Optional
 
 PREFIJO = "WH"
 VERSION_SOPORTADA = 2
@@ -33,6 +39,8 @@ SEPARADOR = "|"
 
 AUTOMATICA = "automatica"
 MANUAL = "manual"
+DESCARGA = "descarga"
+HOME = "home"
 
 # Catalogo maestro de paradas. Cualquier identificador fuera de este
 # conjunto es un error de lectura o una etiqueta ajena al circuito.
@@ -43,12 +51,22 @@ PARADAS = {
     "PM1": MANUAL,
     "PM2": MANUAL,
     "PM3": MANUAL,
+    "D1": DESCARGA,
+    "P1": HOME,
+    "P2": HOME,
 }
 
-# Orden en que el Rover deberia encontrarlas recorriendo el circuito en U:
-# entra arriba a la derecha, avanza hacia la izquierda, baja y vuelve por
-# abajo hacia la derecha.
-SECUENCIA = ["PA1", "PA2", "PA3", "PM1", "PM2", "PM3"]
+# Orden en que el Rover deberia encontrar las paradas del circuito comun
+# (sentido antihorario): abajo de izquierda a derecha (A1 -> A3), sube por
+# la derecha y vuelve por arriba de derecha a izquierda (M1 -> M3), y termina
+# en la descarga D1. Los home no estan aca: son uno por vehiculo.
+SECUENCIA = ["PA1", "PA2", "PA3", "PM1", "PM2", "PM3", "D1"]
+
+# Paradas de home. Cada vehiculo usa una sola (config: "parada_home").
+HOMES = ["P1", "P2"]
+
+# Todas las etiquetas del proyecto, en el orden en que se listan e imprimen.
+CATALOGO = SECUENCIA + HOMES
 
 
 class PayloadInvalido(Exception):
@@ -59,7 +77,7 @@ class PayloadInvalido(Exception):
 class Parada:
     id: str
     tipo: str
-    orden: int
+    orden: Optional[int]    # lugar en SECUENCIA (desde 1); None en los home
     version: int
 
     @property
@@ -77,7 +95,17 @@ class Parada:
     def como_dict(self) -> dict:
         return asdict(self)
 
+    @property
+    def es_home(self) -> bool:
+        return self.tipo == HOME
+
+    @property
+    def es_descarga(self) -> bool:
+        return self.tipo == DESCARGA
+
     def __str__(self) -> str:
+        if self.orden is None:
+            return f"{self.id} ({self.tipo})"
         return f"{self.id} ({self.tipo}, {self.orden} de {len(SECUENCIA)})"
 
 
@@ -113,13 +141,13 @@ def interpretar(contenido: str) -> Parada:
     id_parada = id_parada.strip().upper()
     if id_parada not in PARADAS:
         raise PayloadInvalido(
-            f"parada desconocida: {id_parada!r} (validas: {', '.join(SECUENCIA)})"
+            f"parada desconocida: {id_parada!r} (validas: {', '.join(CATALOGO)})"
         )
 
     return Parada(
         id=id_parada,
         tipo=PARADAS[id_parada],
-        orden=SECUENCIA.index(id_parada) + 1,
+        orden=SECUENCIA.index(id_parada) + 1 if id_parada in SECUENCIA else None,
         version=version,
     )
 
@@ -133,6 +161,6 @@ def construir(id_parada: str) -> str:
     id_parada = str(id_parada).strip().upper()
     if id_parada not in PARADAS:
         raise ValueError(
-            f"Parada desconocida: {id_parada!r}. Validas: {', '.join(SECUENCIA)}"
+            f"Parada desconocida: {id_parada!r}. Validas: {', '.join(CATALOGO)}"
         )
     return f"{PREFIJO}{VERSION_SOPORTADA}{SEPARADOR}{id_parada}"

@@ -36,7 +36,7 @@ Generado por el propio código, con `paradas_activas = ["PA1","PA2","PM2"]` y
 | `marca_temporal` | Momento de la lectura **en el Rover**, en UTC. No es la hora de recepción |
 | `tipo` | Hoy siempre `llegada_parada` |
 | `contenido_crudo` | Lo que decodificó el QR, sin interpretar |
-| `parada` | Cuál es (`PA1`…`PM3`), si es `automatica` o `manual`, y su lugar en el circuito |
+| `parada` | Cuál es (`PA1`…`PM3`, `D1`, `P1`, `P2`), su `tipo` (`automatica`, `manual`, `descarga`, `home`) y su `orden` en el circuito. Los home no están en la secuencia común: `orden` es `null` |
 | `pose` | Distancia y ángulo respecto de la etiqueta. `null` hasta implementar la estimación (QR-37) |
 | `confianza` | Cuántos cuadros seguidos confirmaron la lectura |
 | `reenviado` | `true` si salió del buffer de disco por una caída de red: no es tiempo real |

@@ -6,6 +6,7 @@
   "usar_respaldo_opencv": false,
   "paradas_activas": null,
   "minimo_paradas": 0,
+  "parada_home": null,
   "estado_local": "datos/estado.json",
   "secuencia_recorrido": [
     "PA1",
@@ -13,7 +14,8 @@
     "PA3",
     "PM1",
     "PM2",
-    "PM3"
+    "PM3",
+    "D1"
   ],
   "recorrido_circular": true,
   "captura": {
@@ -36,7 +38,8 @@
     "sin_pantalla": "mostrar_ventana false porque Pi OS Lite no tiene escritorio. Para ver que enfoca la camara: python buscar_camaras.py --guardar y copiar el PNG a la laptop.",
     "captura.resolucion": "320x240 (no 640x480): medido con la camara USB real, ZBar tarda 88 ms por cuadro a 640x480 (9,4 fps, no llega a los 10 de RNF-01) y ~4 veces menos a 320x240 (29,5 fps, el maximo de la camara). Verificar la distancia de lectura cuando se defina el montaje en el Rover. Ver docs/raspberry-pi.md.",
     "mqtt": "Pedido-respuesta con la central: el nodo escucha devices/<vehicle_id>/camera/cmd, cuando recibe set_target busca ese QR y publica qr_detected en .../camera/event. VEHICLE_ID, MQTT_HOST, MQTT_PORT, MQTT_USER y MQTT_PASS (variables de entorno) pisan estos valores. Ver docs/mqtt.md.",
-    "mqtt.credenciales": "No guardar usuario y clave en el repo: definirlos con MQTT_USER y MQTT_PASS (por ejemplo en el EnvironmentFile del servicio)."
+    "mqtt.credenciales": "No guardar usuario y clave en el repo: definirlos con MQTT_USER y MQTT_PASS (por ejemplo en el EnvironmentFile del servicio).",
+    "parada_home": "P1 o P2: el home de ESTE vehiculo (el circuito tiene dos rieles y cada Rover vuelve al suyo). Se suma a las paradas activas y cierra el recorrido. null = no se espera home."
   },
   "mqtt": {
     "host": "192.168.0.10",

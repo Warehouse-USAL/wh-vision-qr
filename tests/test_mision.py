@@ -11,15 +11,23 @@ def parada(pid):
 
 
 class TestPorDefecto:
-    def test_son_las_seis_y_hacen_falta_todas(self):
+    def test_son_las_del_circuito_y_hacen_falta_todas(self):
         m = Mision()
         assert m.activas == SECUENCIA
-        assert m.requeridas == 6
+        assert m.requeridas == 7
 
     def test_acciones_segun_tipo(self):
         m = Mision()
         assert m.accion(parada("PA1")) == DETENER
         assert m.accion(parada("PM1")) == ESPERAR_OPERADOR
+        assert m.accion(parada("D1")) == DETENER
+
+    def test_el_home_no_es_activo_salvo_que_se_pida(self):
+        assert not Mision().es_activa("P1")
+        m = Mision(list(SECUENCIA) + ["P1"])
+        assert m.es_activa("P1") and m.activas[-1] == "P1"
+        assert m.accion(parada("P1")) == DETENER
+        assert m.requeridas == 8
 
 
 class TestParadasEspecificas:
@@ -91,4 +99,4 @@ class TestConfiguracionInvalida:
 def test_descripcion_legible():
     assert "todas" in Mision().descripcion()
     assert "solo PA1, PM2" == Mision(["PA1", "PM2"]).descripcion()
-    assert "minimo 3 de 6" in Mision(None, 3).descripcion()
+    assert "minimo 3 de 7" in Mision(None, 3).descripcion()

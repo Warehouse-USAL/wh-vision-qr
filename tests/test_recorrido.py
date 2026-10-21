@@ -53,7 +53,7 @@ def test_cerrar_una_vuelta_incompleta_informa_lo_que_falto():
     r = Recorrido()
     leer(r, "PA1", "PA2")
     a = leer(r, "PA1")[0]
-    assert a.salteadas == ["PA3", "PM1", "PM2", "PM3"]
+    assert a.salteadas == ["PA3", "PM1", "PM2", "PM3", "D1"]
 
 
 def test_sin_circulo_repetir_la_primera_es_repetida():
@@ -75,5 +75,13 @@ def test_siguiente_esperada():
     assert r.siguiente_esperada() == "PA1"
     leer(r, "PA1")
     assert r.siguiente_esperada() == "PA2"
-    leer(r, "PA2", "PA3", "PM1", "PM2", "PM3")
+    leer(r, "PA2", "PA3", "PM1", "PM2", "PM3", "D1")
     assert r.siguiente_esperada() == "PA1"     # circular
+
+
+def test_el_home_cierra_el_recorrido_de_su_vehiculo():
+    """Con parada_home, la secuencia termina en el home y vuelve a PA1."""
+    r = Recorrido(secuencia=list(SECUENCIA) + ["P1"])
+    a = leer(r, *SECUENCIA, "P1")
+    assert not any(x.hay_advertencia for x in a)
+    assert r.vuelta_completa and r.siguiente_esperada() == "PA1"

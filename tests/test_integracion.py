@@ -18,12 +18,16 @@ qrcode = pytest.importorskip("qrcode")
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 import generar_etiquetas  # noqa: E402
+from vision_qr.payload import SECUENCIA  # noqa: E402
 
 
 @pytest.fixture
 def etiquetas(tmp_path):
     destino = tmp_path / "etiquetas"
-    generar_etiquetas.generar(["PA1", "PA2", "PA3", "PM1", "PM2", "PM3"], 100, destino)
+    generar_etiquetas.generar(SECUENCIA, 100, destino)
+    # La captura por archivos va en orden alfabetico y D1 es la ultima del
+    # circuito: se renombra para que el orden de lectura sea el del recorrido.
+    (destino / "D1.png").rename(destino / "Z_D1.png")
     return destino
 
 
@@ -32,7 +36,7 @@ def correr(tmp_path, config, *extra):
     base = {
         "id_rover": "rover-test", "mostrar_ventana": False, "cuadros_para_confirmar": 2,
         "publicacion": {"tipo": "consola"},
-        "captura": {"tipo": "archivos", "patron": str(tmp_path / "etiquetas" / "P*.png"),
+        "captura": {"tipo": "archivos", "patron": str(tmp_path / "etiquetas" / "*.png"),
                     "repeticiones": 3},
     }
     base.update(config)
@@ -47,8 +51,8 @@ def correr(tmp_path, config, *extra):
 def test_recorrido_completo(tmp_path, etiquetas):
     r = correr(tmp_path, {})
     assert r.returncode == 0, r.stderr
-    assert "mision             : 6/6 (CUMPLIDA)" in r.stdout
-    assert "cobertura          : 6/6" in r.stdout
+    assert "mision             : 7/7 (CUMPLIDA)" in r.stdout
+    assert "cobertura          : 7/7" in r.stdout
     assert "SIN LEER" not in r.stdout
 
 
@@ -64,6 +68,7 @@ def test_paradas_especificas(tmp_path, etiquetas):
 
 def test_minimo_de_paradas(tmp_path, etiquetas):
     # solo hay archivos de 3 paradas: con minimo 4 la mision queda pendiente
+    (tmp_path / "etiquetas" / "Z_D1.png").unlink()
     (tmp_path / "etiquetas" / "PM1.png").unlink()
     (tmp_path / "etiquetas" / "PM2.png").unlink()
     (tmp_path / "etiquetas" / "PM3.png").unlink()
@@ -84,7 +89,7 @@ def test_un_qr_ajeno_se_reporta_una_sola_vez(tmp_path, etiquetas):
     """Regresion: un QR ajeno sostenido sumaba un descarte por cuadro."""
     qrcode.make("https://ejemplo.org").save(tmp_path / "etiquetas" / "PZ_ajeno.png")
     r = correr(tmp_path, {"captura": {"tipo": "archivos",
-                                      "patron": str(tmp_path / "etiquetas" / "P*.png"),
+                                      "patron": str(tmp_path / "etiquetas" / "*.png"),
                                       "repeticiones": 40}})
     assert r.stdout.count("descartado (no es del proyecto)") == 1
     assert "1 distinto(s), 40 descarte(s)" in r.stdout
@@ -108,7 +113,7 @@ def test_estado_local_y_reporte(tmp_path, etiquetas):
     assert r.returncode == 0, r.stderr
 
     e = json.loads(estado.read_text(encoding="utf-8"))
-    assert e["parada"]["id"] == "PM3" and e["mision"]["cumplida"] is True
+    assert e["parada"]["id"] == "D1" and e["mision"]["cumplida"] is True
 
     rep = json.loads(reporte.read_text(encoding="utf-8"))
     assert rep["etiqueta"] == "prueba automatica"
@@ -145,7 +150,7 @@ class TestMapaDeEtiquetas:
         self.marcar(etiquetas, {"PA1", "PA2"})
         generar_etiquetas.generar(["PM3"], 100, etiquetas)
         mapa = self.leer(etiquetas)
-        assert len(mapa) == 6
+        assert len(mapa) == 7
         assert mapa["PA1"]["instalada"] == "SI" and mapa["PA2"]["verificada"] == "SI"
 
     def test_una_etiqueta_regenerada_vuelve_a_pendiente(self, etiquetas):
@@ -155,4 +160,21 @@ class TestMapaDeEtiquetas:
 
     def test_queda_en_el_orden_del_circuito(self, etiquetas):
         generar_etiquetas.generar(["PM3", "PA1"], 100, etiquetas)
-        assert list(self.leer(etiquetas)) == ["PA1", "PA2", "PA3", "PM1", "PM2", "PM3"]
+        assert list(self.leer(etiquetas)) == SECUENCIA
+
+
+def test_parada_home_cierra_el_recorrido(tmp_path, etiquetas):
+    generar_etiquetas.generar(["P1"], 100, etiquetas)
+    (etiquetas / "P1.png").rename(etiquetas / "Z_P1.png")   # Z_P1 va despues de Z_D1
+    r = correr(tmp_path, {"parada_home": "P1"})
+    assert r.returncode == 0, r.stderr
+    assert "Recorrido: PA1 -> PA2 -> PA3 -> PM1 -> PM2 -> PM3 -> D1 -> P1" in r.stdout
+    assert "mision             : 8/8 (CUMPLIDA)" in r.stdout
+    assert "(!)" not in r.stdout
+
+
+def test_parada_home_invalida_da_un_mensaje_claro(tmp_path, etiquetas):
+    r = correr(tmp_path, {"parada_home": "P9"})
+    assert r.returncode == 1
+    assert "parada_home" in r.stderr and "P1, P2" in r.stderr
+    assert "Traceback" not in r.stderr

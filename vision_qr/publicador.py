@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
+from .payload import SECUENCIA
+
 
 def construir_evento(id_rover: str, parada, lectura, contenido_crudo: str,
                      confianza: Optional[int] = None, avance=None,
@@ -124,8 +126,12 @@ class PublicadorConsola(Publicador):
 
     def enviar(self, evento: dict) -> bool:
         p = evento["parada"]
-        marca = "AUTO" if p["tipo"] == "automatica" else "MANUAL"
-        linea = f"  -> {p['id']}  [{marca}]  parada {p['orden']} de 6"
+        marca = {"automatica": "AUTO", "manual": "MANUAL",
+                 "descarga": "DESCARGA", "home": "HOME"}.get(p["tipo"], p["tipo"].upper())
+        if p.get("orden") is None:      # los home no estan en la secuencia comun
+            linea = f"  -> {p['id']}  [{marca}]"
+        else:
+            linea = f"  -> {p['id']}  [{marca}]  parada {p['orden']} de {len(SECUENCIA)}"
         if evento.get("accion"):
             linea += f"  | {evento['accion']}"
         m = evento.get("mision")

@@ -14,13 +14,15 @@ cámara → ZBar (decodifica) → valida que sea del proyecto → confirma en N 
 
 ## El circuito
 
-Seis paradas fijas en forma de U. Cada una tiene un QR que dice cuál es:
+Siete paradas en el circuito común más un home por vehículo (layout de la maqueta, lámina 1). Cada una tiene un QR que dice cuál es:
 
 ```
-PA1 → PA2 → PA3 → PM1 → PM2 → PM3 → (vuelve a PA1)
+PA1 → PA2 → PA3 → PM1 → PM2 → PM3 → D1 → (home) → (vuelve a PA1)
 
 PA1 PA2 PA3   automáticas: el Rover se detiene solo
 PM1 PM2 PM3   manuales:    requieren un operador
+D1            descarga:    se confirma por QR, el Rover se detiene
+P1 P2         home:        uno por vehículo (config: "parada_home")
 ```
 
 El contenido de la etiqueta es `WH2|PA1`: prefijo del proyecto, versión del
@@ -92,7 +94,8 @@ motores decide si puede cumplirlo. Una parada inactiva se lee y se reporta igual
 | `paradas_activas` | `null` | Dónde puede detenerse |
 | `minimo_paradas` | `0` | Cuántas hacen falta. `0` = todas las activas |
 | `estado_local` | `null` | Archivo JSON con la última parada, para el código de navegación |
-| `secuencia_recorrido` | las seis | Orden esperado. Se filtra por `paradas_activas` |
+| `parada_home` | `null` | `P1` o `P2`: el home de este vehículo. Se suma a las activas y cierra el recorrido |
+| `secuencia_recorrido` | el circuito (7) | Orden esperado. Se filtra por `paradas_activas` |
 | `recorrido_circular` | `true` | Si tras la última se espera volver a la primera |
 | `captura.tipo` | `webcam` | `webcam`, `video`, `archivos`, `red` o `picamera` |
 | `publicacion.tipo` | `consola` | `consola` o `http` |
@@ -199,3 +202,7 @@ puede regenerar: se llena a mano al pegar cada etiqueta.
 - Estimación de pose y calibración de cámara
 - Validar en hardware el arranque automático como servicio
 - Definir con vehículos cómo consumen `accion` y `estado_local`
+
+## Una Pi para dos vehículos
+
+Si hay una sola Raspberry Pi, puede leer las cámaras de dos vehículos por red: `dos_vehiculos.py`. Paso a paso en [docs/dos-vehiculos.md](docs/dos-vehiculos.md).

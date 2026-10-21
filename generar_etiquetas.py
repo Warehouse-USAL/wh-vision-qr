@@ -17,6 +17,10 @@ Ejemplos:
     # Hoja A4 con las seis, para probar sin imprimir de a una
     python generar_etiquetas.py --hoja-prueba
 
+    # Hojas A4 para imprimir y pegar: codigo de 7 cm, una copia por riel
+    # (EXT = riel exterior, INT = interior), los home una sola vez
+    python generar_etiquetas.py --hoja-impresion
+
     # Hoja A4 con el mismo codigo en varios tamanos, para medir
     # la distancia maxima de lectura (QR-12)
     python generar_etiquetas.py --ensayo-tamanos
@@ -31,7 +35,9 @@ import qrcode
 from qrcode.constants import ERROR_CORRECT_Q
 from PIL import Image, ImageDraw, ImageFont
 
-from vision_qr.payload import construir, PARADAS, SECUENCIA, AUTOMATICA
+from vision_qr.payload import construir, PARADAS, SECUENCIA, CATALOGO, AUTOMATICA, MANUAL, DESCARGA, HOME
+
+NOMBRE_TIPO = {AUTOMATICA: "AUTOMATICA", MANUAL: "MANUAL", DESCARGA: "DESCARGA", HOME: "HOME"}
 
 DPI = 300
 
@@ -56,7 +62,8 @@ def mm_a_px(mm: float) -> int:
     return int(round(mm / 25.4 * DPI))
 
 
-def una_etiqueta(id_parada: str, lado_mm: float, con_pie: bool = True) -> Image.Image:
+def una_etiqueta(id_parada: str, lado_mm: float, con_pie: bool = True,
+                 riel: str | None = None) -> Image.Image:
     """Genera una etiqueta lista para imprimir.
 
     Correccion de errores nivel Q: tolera suciedad, sombras y deterioro
@@ -88,12 +95,17 @@ def una_etiqueta(id_parada: str, lado_mm: float, con_pie: bool = True) -> Image.
     grande = cargar_fuente(mm_a_px(9))
     chica = cargar_fuente(mm_a_px(3.2))
     tipo = PARADAS[id_parada.upper()]
-    etiqueta_tipo = "AUTOMATICA" if tipo == AUTOMATICA else "MANUAL"
+    etiqueta_tipo = NOMBRE_TIPO[tipo]
 
     dibujo.text((mm_a_px(2), lado_px + mm_a_px(1)), id_parada.upper(),
                 fill="black", font=grande)
     dibujo.text((lado_px - mm_a_px(2), lado_px + mm_a_px(5)), etiqueta_tipo,
                 fill="black", font=chica, anchor="ra")
+    if riel:
+        # Mismo contenido en las dos copias: la marca sirve solo para no
+        # pegar la del riel interior en el exterior (y viceversa).
+        dibujo.text((lado_px - mm_a_px(2), lado_px + mm_a_px(9.5)), f"RIEL {riel}",
+                    fill="black", font=chica, anchor="ra")
     return lienzo
 
 
@@ -122,7 +134,7 @@ def generar(paradas, lado_mm: float, destino: Path):
         filas.append({
             "parada": pid,
             "tipo": PARADAS[pid],
-            "orden": SECUENCIA.index(pid) + 1,
+            "orden": SECUENCIA.index(pid) + 1 if pid in SECUENCIA else "",
             "contenido": texto,
             "archivo": nombre,
             "lado_mm": lado_mm,
@@ -148,8 +160,8 @@ def generar(paradas, lado_mm: float, destino: Path):
     ]
     for f in filas:
         previas[f["parada"]] = f
-    posicion = {p: i for i, p in enumerate(SECUENCIA)}
-    todas = sorted(previas.values(), key=lambda r: posicion.get(r["parada"], len(SECUENCIA)))
+    posicion = {p: i for i, p in enumerate(CATALOGO)}
+    todas = sorted(previas.values(), key=lambda r: posicion.get(r["parada"], len(CATALOGO)))
 
     try:
         with mapa.open("w", newline="", encoding="utf-8") as f:
@@ -173,31 +185,99 @@ def generar(paradas, lado_mm: float, destino: Path):
 
 
 def hoja_prueba(destino: Path, lado_mm: float = 45):
-    """Las seis etiquetas en una hoja A4.
+    """Todas las etiquetas del catalogo en una hoja A4.
 
     Para probar en el escritorio: se imprime una sola hoja, o se abre en
     pantalla y se le muestran al Rover una por una sin gastar papel.
+    Van en tres columnas para que las nueve entren en una hoja.
     """
     destino.mkdir(parents=True, exist_ok=True)
     ancho, alto = mm_a_px(210), mm_a_px(297)
     hoja = Image.new("RGB", (ancho, alto), "white")
     dibujo = ImageDraw.Draw(hoja)
     titulo = cargar_fuente(mm_a_px(6))
-    dibujo.text((mm_a_px(15), mm_a_px(10)), "Recorrido del Rover - 6 paradas",
+    dibujo.text((mm_a_px(15), mm_a_px(10)), f"Recorrido del Rover - {len(CATALOGO)} paradas",
                 fill="black", font=titulo)
 
-    col_x = [mm_a_px(20), mm_a_px(115)]
+    columnas = 3
+    sep = (210 - 2 * 15 - columnas * lado_mm) / max(columnas - 1, 1)
+    col_x = [mm_a_px(15 + i * (lado_mm + sep)) for i in range(columnas)]
     y = mm_a_px(25)
-    for i, pid in enumerate(SECUENCIA):
+    for i, pid in enumerate(CATALOGO):
         img = una_etiqueta(pid, lado_mm)
-        hoja.paste(img, (col_x[i % 2], y))
-        if i % 2 == 1:
+        hoja.paste(img, (col_x[i % columnas], y))
+        if i % columnas == columnas - 1:
             y += img.height + mm_a_px(8)
 
     salida = destino / "hoja_prueba_A4.png"
     hoja.save(salida, dpi=(DPI, DPI))
-    print(f"Hoja de prueba con las 6 paradas: {salida}")
+    print(f"Hoja de prueba con las {len(CATALOGO)} paradas: {salida}")
     print("Imprimila al 100%, o abrila en pantalla para probar sin gastar papel.")
+
+
+def lado_imagen_para_codigo(codigo_mm: float) -> float:
+    """Lado de la imagen para que el CODIGO (los modulos) mida codigo_mm.
+
+    El lado de una etiqueta incluye la zona blanca de silencio (4 modulos
+    por lado). El layout pide un QR de 7 x 7 cm: se interpreta como el
+    codigo en si, asi que la imagen impresa es algo mayor.
+    """
+    qr = qrcode.QRCode(error_correction=ERROR_CORRECT_Q, box_size=10, border=4)
+    qr.add_data(construir("PA1"))
+    qr.make(fit=True)
+    n = qr.modules_count
+    return codigo_mm * (n + 8) / n
+
+
+def hoja_impresion(destino: Path, codigo_mm: float = 70, copias: int = 2) -> int:
+    """Hojas A4 listas para imprimir al 100 % y recortar.
+
+    Con dos rieles, cada vehiculo lee un QR pegado junto a SU linea:
+    copias=2 imprime cada parada del circuito dos veces (EXT e INT). Los home
+    son de un solo vehiculo y salen una vez. Devuelve cuantas etiquetas hay.
+    """
+    if copias not in (1, 2):
+        raise ValueError("copias tiene que ser 1 o 2")
+    destino.mkdir(parents=True, exist_ok=True)
+
+    items = []
+    for pid in CATALOGO:
+        if PARADAS[pid] == HOME or copias == 1:
+            items.append((pid, None))
+        else:
+            items += [(pid, "EXT"), (pid, "INT")]
+
+    lado = lado_imagen_para_codigo(codigo_mm)
+    ancho, alto = mm_a_px(210), mm_a_px(297)
+    margen, hueco = mm_a_px(5), mm_a_px(3)
+    ejemplo = una_etiqueta("PA1", lado)
+    celda_w, celda_h = ejemplo.width, ejemplo.height
+    cols = max(1, (ancho - 2 * margen + hueco) // (celda_w + hueco))
+    filas = max(1, (alto - 2 * margen - mm_a_px(8) + hueco) // (celda_h + hueco))
+    por_hoja = cols * filas
+
+    hojas = []
+    for ini in range(0, len(items), por_hoja):
+        hoja = Image.new("RGB", (ancho, alto), "white")
+        d = ImageDraw.Draw(hoja)
+        d.text((margen, margen // 2), "Imprimir al 100% (sin ajustar a pagina). "
+               f"Codigo de {codigo_mm:g} mm. Recortar por el borde gris.",
+               fill="black", font=cargar_fuente(mm_a_px(3.2)))
+        for k, (pid, riel) in enumerate(items[ini:ini + por_hoja]):
+            x = margen + (k % cols) * (celda_w + hueco)
+            y = margen + mm_a_px(8) + (k // cols) * (celda_h + hueco)
+            hoja.paste(una_etiqueta(pid, lado, riel=riel), (x, y))
+            d.rectangle([x, y, x + celda_w - 1, y + celda_h - 1], outline=(170, 170, 170), width=2)
+        hojas.append(hoja)
+
+    for i, h in enumerate(hojas, 1):
+        h.save(destino / f"hoja_impresion_{i}.png", dpi=(DPI, DPI))
+    Image.init()   # carga los plugins (el PDF usa JPEG) en instalaciones de Pillow recortadas
+    hojas[0].save(destino / "hoja_impresion.pdf", save_all=True, append_images=hojas[1:],
+                  resolution=DPI)
+    print(f"{len(items)} etiquetas en {len(hojas)} hoja(s) A4: {destino / 'hoja_impresion.pdf'}")
+    print(f"Cada imagen mide {lado:.0f} mm de lado (el codigo, {codigo_mm:g} mm, mas la zona blanca).")
+    return len(items)
 
 
 def ensayo_tamanos(destino: Path):
@@ -234,11 +314,17 @@ def ensayo_tamanos(destino: Path):
 def main():
     ap = argparse.ArgumentParser(description="Generador de etiquetas QR - Warehouse USAL")
     ap.add_argument("--paradas", nargs="+", default=None,
-                    help=f"Cuales generar. Por defecto las seis: {' '.join(SECUENCIA)}")
+                    help=f"Cuales generar. Por defecto todas: {' '.join(CATALOGO)}")
     ap.add_argument("--mm", type=float, default=100.0, help="Lado del codigo en milimetros")
     ap.add_argument("--destino", default="etiquetas")
     ap.add_argument("--hoja-prueba", action="store_true",
-                    help="Una hoja A4 con las seis, para probar sin imprimir de a una")
+                    help="Una hoja A4 con todas, para probar sin imprimir de a una")
+    ap.add_argument("--hoja-impresion", action="store_true",
+                    help="Hojas A4 (PDF y PNG) con una copia por riel, para imprimir y pegar")
+    ap.add_argument("--codigo-mm", type=float, default=70.0,
+                    help="Lado del codigo en --hoja-impresion (el layout pide 70)")
+    ap.add_argument("--copias", type=int, default=2, choices=[1, 2],
+                    help="En --hoja-impresion: 2 = una por riel (EXT e INT)")
     ap.add_argument("--ensayo-tamanos", action="store_true",
                     help="Hoja A4 con el mismo codigo en varios tamanos")
     args = ap.parse_args()
@@ -248,16 +334,19 @@ def main():
     if args.ensayo_tamanos:
         ensayo_tamanos(destino)
         return
+    if args.hoja_impresion:
+        hoja_impresion(destino, args.codigo_mm, args.copias)
+        return
     if args.hoja_prueba:
         hoja_prueba(destino)
         return
 
-    paradas = args.paradas if args.paradas else SECUENCIA
+    paradas = args.paradas if args.paradas else CATALOGO
     desconocidas = [p for p in paradas if p.upper() not in PARADAS]
     if desconocidas:
         raise SystemExit(
             f"Paradas desconocidas: {', '.join(desconocidas)}.\n"
-            f"Validas: {', '.join(SECUENCIA)}"
+            f"Validas: {', '.join(CATALOGO)}"
         )
 
     generar(paradas, args.mm, destino)

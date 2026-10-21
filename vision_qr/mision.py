@@ -2,7 +2,9 @@
 
 Dos parametros, una regla:
 
-    paradas_activas   donde puede detenerse. Por defecto, las seis.
+    paradas_activas   donde puede detenerse. Por defecto, las del circuito
+                      comun (PA1..PA3, PM1..PM3, D1). El home del vehiculo
+                      se suma con "parada_home" en el config.
     minimo_paradas    cuantas de esas hacen falta. 0 = todas las activas.
 
 Ejemplos:
@@ -25,9 +27,9 @@ cambia es la accion recomendada y que no cuenta para el minimo.
 from __future__ import annotations
 from typing import Iterable, List, Optional
 
-from .payload import PARADAS, SECUENCIA, AUTOMATICA, Parada
+from .payload import PARADAS, SECUENCIA, CATALOGO, MANUAL, Parada
 
-DETENER = "detener"                      # activa y automatica
+DETENER = "detener"                      # activa y automatica, descarga o home
 ESPERAR_OPERADOR = "esperar_operador"    # activa y manual
 CONTINUAR = "continuar"                  # no esta en las activas
 
@@ -47,7 +49,7 @@ class Mision:
         if desconocidas:
             raise ConfiguracionInvalida(
                 f"paradas_activas tiene paradas que no existen: {', '.join(desconocidas)}. "
-                f"Las validas son: {', '.join(SECUENCIA)}."
+                f"Las validas son: {', '.join(CATALOGO)}."
             )
         if not pedidas:
             raise ConfiguracionInvalida(
@@ -57,7 +59,7 @@ class Mision:
 
         # En el orden del circuito y sin repetidas, sin importar como se pidieron.
         conjunto = set(pedidas)
-        self.activas: List[str] = [p for p in SECUENCIA if p in conjunto]
+        self.activas: List[str] = [p for p in CATALOGO if p in conjunto]
 
         try:
             minimo = int(minimo)
@@ -83,7 +85,9 @@ class Mision:
     def accion(self, parada: Parada) -> str:
         if not self.es_activa(parada.id):
             return CONTINUAR
-        return DETENER if parada.tipo == AUTOMATICA else ESPERAR_OPERADOR
+        # Solo la manual espera a una persona. La descarga y el home se
+        # confirman por QR (tabla de paradas del layout): el Rover se detiene.
+        return ESPERAR_OPERADOR if parada.tipo == MANUAL else DETENER
 
     def estado(self, atendidas: Iterable[str]) -> dict:
         """Progreso de la mision, dado lo leido en la vuelta en curso.
@@ -103,6 +107,6 @@ class Mision:
         if self.minimo > 0:
             return (f"minimo {self.minimo} de {len(self.activas)} activas "
                     f"({', '.join(self.activas)})")
-        if len(self.activas) == len(SECUENCIA):
-            return f"todas las paradas ({len(self.activas)})"
+        if self.activas == SECUENCIA:
+            return f"todas las paradas del circuito ({len(self.activas)})"
         return f"solo {', '.join(self.activas)}"

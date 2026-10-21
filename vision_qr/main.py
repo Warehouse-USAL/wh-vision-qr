@@ -18,7 +18,7 @@ import cv2
 
 from .captura import construir_fuente
 from .decodificador import Decodificador, anotar
-from .payload import interpretar, PayloadInvalido, SECUENCIA
+from .payload import interpretar, PayloadInvalido, SECUENCIA, HOMES
 from .confirmador import Confirmador
 from .recorrido import Recorrido
 from .mision import Mision, ConfiguracionInvalida
@@ -89,8 +89,23 @@ def main() -> int:
             print(f"No se pudo abrir la vista web en el puerto {puerto_vista}: {e}", file=sys.stderr)
             return 1
 
+    # Cada vehiculo tiene su home (P1 o P2): el circuito tiene dos rieles y
+    # cada Rover vuelve al suyo. Si el config lo indica, el home se suma a
+    # las paradas activas y cierra el recorrido; si no, no se espera ninguno.
+    home = cfg.get("parada_home")
+    if home is not None:
+        home = str(home).strip().upper()
+        if home not in HOMES:
+            print(f"Configuracion invalida: parada_home {home!r} no existe. "
+                  f"Las validas son: {', '.join(HOMES)} (o null).", file=sys.stderr)
+            return 1
+
+    activas = cfg.get("paradas_activas")
+    if home and activas is None:
+        activas = list(SECUENCIA) + [home]
+
     try:
-        mision = Mision(cfg.get("paradas_activas"), cfg.get("minimo_paradas", 0))
+        mision = Mision(activas, cfg.get("minimo_paradas", 0))
     except ConfiguracionInvalida as e:
         print(f"Configuracion invalida: {e}", file=sys.stderr)
         return 1
@@ -99,7 +114,9 @@ def main() -> int:
     # paradas activas. Asi, una parada en la que el Rover no debe detenerse
     # nunca aparece como "sin leer" ni dispara una advertencia falsa; y el
     # filtro aplica aunque el config.json viejo traiga las seis listadas.
-    base = cfg.get("secuencia_recorrido") or SECUENCIA
+    base = list(cfg.get("secuencia_recorrido") or SECUENCIA)
+    if home and home not in base:
+        base.append(home)
     ruta = Recorrido(
         secuencia=[p for p in base if mision.es_activa(p)],
         circular=cfg.get("recorrido_circular", True),
