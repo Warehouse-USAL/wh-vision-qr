@@ -79,7 +79,10 @@ if ! "$PY" -c "import socket,sys;socket.create_connection((sys.argv[1],int(sys.a
     exit 1
 fi
 if [ -z "$CAMARA_URL" ]; then
-    if ! rpicam-hello --list-cameras 2>&1 | grep -q "imx219\|Available cameras"; then
+    # Primero se guarda la salida: con pipefail, `rpicam-hello | grep -q` falla
+    # aunque la camara este (grep corta antes y rpicam-hello recibe SIGPIPE).
+    CAMARAS="$(rpicam-hello --list-cameras 2>&1 || true)"
+    if ! grep -q "Available cameras" <<<"$CAMARAS"; then
         echo "!! La Pi no detecta la camara CSI (rpicam-hello --list-cameras). Revisar la cinta con la Pi apagada." >&2
         exit 1
     fi
